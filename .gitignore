@@ -1,0 +1,8 @@
+# Build System
+/.gradle/
+/.kotlin/
+
+build/
+
+# IDE
+/.idea/
