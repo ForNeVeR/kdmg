@@ -3,4 +3,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [plugins]
+gradle-jvm-wrapper = "me.filippov.gradle.jvm.wrapper:0.14.0"
 kotlin-jvm = "org.jetbrains.kotlin.jvm:2.2.0"
