@@ -4,8 +4,15 @@
 
 package me.fornever.kdmg.app
 
-import me.fornever.kdmg.Printer
+import me.fornever.kdmg.util.Dmg
+import kotlin.io.path.Path
 
-fun main() {
-    println("Diagnostic Application for kdmg")
+fun main(args: Array<String>) {
+    when (args.getOrNull(0)) {
+        "dmg" -> {
+            val path = Path(args[1])
+            val dmg = Dmg.read(path)
+        }
+        else -> println("Usage:\n- dmg <path to dmg file> - print the DMG file diagnostics")
+    }
 }
