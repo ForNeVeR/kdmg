@@ -7,5 +7,6 @@ plugins {
 }
 
 dependencies {
+    implementation(libs.dd.plist)
     testImplementation(kotlin("test"))
 }

@@ -1,5 +1,6 @@
 package me.fornever.kdmg.util
 
+import com.dd.plist.PropertyListParser
 import java.io.FileInputStream
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets
@@ -97,9 +98,13 @@ private fun readXmlData(channel: FileChannel, xmlDataDescriptor: XmlDataDescript
         xmlDataDescriptor.offset.toLong(), // TODO: Checked cast?
         xmlDataDescriptor.length.toLong()
     )
+    val bytes = ByteArray(data.capacity()).apply(data::get)
     val xmlString = String(
-        ByteArray(data.capacity()).apply(data::get),
+        bytes,
         StandardCharsets.US_ASCII
     )
     println("XML received: $xmlString")
+
+    val parsedData = PropertyListParser.parse(bytes)
+    println("XML parsed: $parsedData")
 }
