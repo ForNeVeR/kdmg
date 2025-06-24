@@ -2,6 +2,7 @@ package me.fornever.kdmg.util
 
 import java.io.FileInputStream
 import java.nio.channels.FileChannel
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
 class Dmg {
@@ -12,6 +13,7 @@ class Dmg {
             FileInputStream(path.toFile()).use { stream ->
                 stream.channel.use { channel ->
                     val trailer = tryReadTrailer(channel)
+                    val xmlData = trailer?.let { readXmlData(channel, it) }
                 }
             }
 
@@ -20,10 +22,12 @@ class Dmg {
     }
 }
 
+private data class XmlDataDescriptor(val offset: ULong, val length: ULong)
+
 /**
  * https://newosxbook.com/DMG.html
  */
-private fun tryReadTrailer(channel: FileChannel): Unit? {
+private fun tryReadTrailer(channel: FileChannel): XmlDataDescriptor? {
     if (channel.size() < 512) {
         return null
     }
@@ -84,5 +88,18 @@ private fun tryReadTrailer(channel: FileChannel): Unit? {
     println("Sector count: $sectorCount")
 
     // Also, 3 reserved UInt32 items here.
-    return Unit
+    return XmlDataDescriptor(xmlOffset, xmlLength)
+}
+
+private fun readXmlData(channel: FileChannel, xmlDataDescriptor: XmlDataDescriptor): Unit {
+    val data = channel.map(
+        FileChannel.MapMode.READ_ONLY,
+        xmlDataDescriptor.offset.toLong(), // TODO: Checked cast?
+        xmlDataDescriptor.length.toLong()
+    )
+    val xmlString = String(
+        ByteArray(data.capacity()).apply(data::get),
+        StandardCharsets.US_ASCII
+    )
+    println("XML received: $xmlString")
 }
