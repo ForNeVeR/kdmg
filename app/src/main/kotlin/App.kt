@@ -12,6 +12,9 @@ fun main(args: Array<String>) {
         "dmg" -> {
             val path = Path(args[1])
             val dmg = Dmg.read(path)
+            for (entry in dmg.descriptors) {
+                println("name: ${entry.name}, table: ${entry.table}")
+            }
         }
         else -> println("Usage:\n- dmg <path to dmg file> - print the DMG file diagnostics")
     }

@@ -1,12 +1,12 @@
 package me.fornever.kdmg.util
 
-import com.dd.plist.PropertyListParser
+import com.dd.plist.*
 import java.io.FileInputStream
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
-class Dmg {
+class Dmg(val descriptors: List<BlkxDescriptor>) {
 
     companion object {
         @JvmStatic
@@ -14,11 +14,10 @@ class Dmg {
             FileInputStream(path.toFile()).use { stream ->
                 stream.channel.use { channel ->
                     val trailer = tryReadTrailer(channel)
-                    val xmlData = trailer?.let { readXmlData(channel, it) }
+                    val xmlData = trailer?.let { readXmlData(channel, it) } ?: error("Read error")
+                    return Dmg(xmlData)
                 }
             }
-
-            return Dmg()
         }
     }
 }
@@ -92,7 +91,149 @@ private fun tryReadTrailer(channel: FileChannel): XmlDataDescriptor? {
     return XmlDataDescriptor(xmlOffset, xmlLength)
 }
 
-private fun readXmlData(channel: FileChannel, xmlDataDescriptor: XmlDataDescriptor): Unit {
+/*
+typedef struct {
+        uint32_t Signature;          // Magic ('mish')
+        uint32_t Version;            // Current version is 1
+        uint64_t SectorNumber;       // Starting disk sector in this blkx descriptor
+        uint64_t SectorCount;        // Number of disk sectors in this blkx descriptor
+
+        uint64_t DataOffset;     
+        uint32_t BuffersNeeded;
+        uint32_t BlockDescriptors;   // Number of descriptors
+
+        uint32_t reserved1;
+        uint32_t reserved2;
+        uint32_t reserved3;
+        uint32_t reserved4;
+        uint32_t reserved5;
+        uint32_t reserved6;
+
+        UDIFChecksum checksum;
+
+        uint32_t NumberOfBlockChunks; 
+        BLKXChunkEntry [0];
+} __attribute__((__packed__)) BLKXTable;
+
+// Where each  BLXKRunEntry is defined as follows:
+
+typedef struct {
+        uint32_t EntryType;         // Compression type used or entry type (see next table)
+        uint32_t Comment;           // "+beg" or "+end", if EntryType is comment (0x7FFFFFFE). Else reserved.
+        uint64_t SectorNumber;      // Start sector of this chunk
+        uint64_t SectorCount;       // Number of sectors in this chunk
+        uint64_t CompressedOffset;  // Start of chunk in data fork
+        uint64_t CompressedLength;  // Count of bytes of chunk, in data fork
+} __attribute__((__packed__)) BLKXChunkEntry;
+ */
+
+data class BlkxTable(
+    val signature: UInt,      // 'mish'
+    val version: UInt,        // Current version is 1
+    val sectorNumber: ULong,  // Starting disk sector
+    val sectorCount: ULong,   // Number of disk sectors
+    val dataOffset: ULong,
+    val buffersNeeded: UInt,
+    val blockDescriptors: UInt,
+    val checksum: ByteArray,  // UDIFChecksum
+    val numberOfBlockChunks: UInt,
+    val chunks: List<BlkxChunkEntry>
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as BlkxTable
+
+        if (signature != other.signature) return false
+        if (version != other.version) return false
+        if (sectorNumber != other.sectorNumber) return false
+        if (sectorCount != other.sectorCount) return false
+        if (dataOffset != other.dataOffset) return false
+        if (buffersNeeded != other.buffersNeeded) return false
+        if (blockDescriptors != other.blockDescriptors) return false
+        if (!checksum.contentEquals(other.checksum)) return false
+        if (numberOfBlockChunks != other.numberOfBlockChunks) return false
+        return chunks == other.chunks
+    }
+
+    override fun hashCode(): Int {
+        var result = signature.hashCode()
+        result = 31 * result + version.hashCode()
+        result = 31 * result + sectorNumber.hashCode()
+        result = 31 * result + sectorCount.hashCode()
+        result = 31 * result + dataOffset.hashCode()
+        result = 31 * result + buffersNeeded.hashCode()
+        result = 31 * result + blockDescriptors.hashCode()
+        result = 31 * result + checksum.contentHashCode()
+        result = 31 * result + numberOfBlockChunks.hashCode()
+        result = 31 * result + chunks.hashCode()
+        return result
+    }
+}
+
+data class BlkxChunkEntry(
+    val entryType: UInt,           // Compression type or entry type
+    val comment: UInt,             // "+beg" or "+end" for comments, else reserved
+    val sectorNumber: ULong,       // Start sector of chunk
+    val sectorCount: ULong,        // Number of sectors in chunk
+    val compressedOffset: ULong,   // Start of chunk in data fork
+    val compressedLength: ULong    // Count of bytes of chunk in data fork
+)
+
+private fun parseBlkxDescriptor(data: ByteArray): BlkxTable {
+    val buffer = java.nio.ByteBuffer.wrap(data).order(java.nio.ByteOrder.BIG_ENDIAN)
+
+    val signature = buffer.getInt().toUInt()
+    require(signature == 0x6D697368u) { "Invalid signature: expected 'mish'" } // 'mish' in hex
+
+    val version = buffer.getInt().toUInt()
+    val sectorNumber = buffer.getLong().toULong()
+    val sectorCount = buffer.getLong().toULong()
+    val dataOffset = buffer.getLong().toULong()
+    val buffersNeeded = buffer.getInt().toUInt()
+    val blockDescriptors = buffer.getInt().toUInt()
+
+    // Skip reserved fields
+    repeat(6) { buffer.getInt() }
+
+    // Read checksum (assuming it's a fixed size array, adjust size if needed)
+    val checksum = ByteArray(136)
+    buffer.get(checksum)
+
+    val numberOfBlockChunks = buffer.getInt().toUInt()
+
+    // Read chunk entries
+    val chunks = mutableListOf<BlkxChunkEntry>()
+    repeat(numberOfBlockChunks.toInt()) {
+        val chunk = BlkxChunkEntry(
+            entryType = buffer.getInt().toUInt(),
+            comment = buffer.getInt().toUInt(),
+            sectorNumber = buffer.getLong().toULong(),
+            sectorCount = buffer.getLong().toULong(),
+            compressedOffset = buffer.getLong().toULong(),
+            compressedLength = buffer.getLong().toULong()
+        )
+        chunks.add(chunk)
+    }
+
+    return BlkxTable(
+        signature = signature,
+        version = version,
+        sectorNumber = sectorNumber,
+        sectorCount = sectorCount,
+        dataOffset = dataOffset,
+        buffersNeeded = buffersNeeded,
+        blockDescriptors = blockDescriptors,
+        checksum = checksum,
+        numberOfBlockChunks = numberOfBlockChunks,
+        chunks = chunks
+    )
+}
+
+data class BlkxDescriptor(val name: String, val table: BlkxTable)
+
+private fun readXmlData(channel: FileChannel, xmlDataDescriptor: XmlDataDescriptor): List<BlkxDescriptor> {
     val data = channel.map(
         FileChannel.MapMode.READ_ONLY,
         xmlDataDescriptor.offset.toLong(), // TODO: Checked cast?
@@ -107,4 +248,14 @@ private fun readXmlData(channel: FileChannel, xmlDataDescriptor: XmlDataDescript
 
     val parsedData = PropertyListParser.parse(bytes)
     println("XML parsed: $parsedData")
+
+    val resourceFork = (parsedData as NSDictionary)["resource-fork"] as NSDictionary
+    val blkx = resourceFork["blkx"] as NSArray
+    return blkx.array.map { entry ->
+        entry as NSDictionary
+        BlkxDescriptor(
+            (entry["CFName"] as NSString).content,
+            parseBlkxDescriptor((entry["Data"] as NSData).bytes())
+        )
+    }
 }
