@@ -9,6 +9,7 @@ plugins {
 
 dependencies {
     implementation(project(":lib"))
+    implementation(libs.lzfse.decode)
 }
 
 application {

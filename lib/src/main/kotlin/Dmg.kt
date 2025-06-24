@@ -2,11 +2,12 @@ package me.fornever.kdmg.util
 
 import com.dd.plist.*
 import java.io.FileInputStream
+import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
-class Dmg(val descriptors: List<BlkxDescriptor>) {
+class Dmg(val path: Path, val header: XmlDataDescriptor, val descriptors: List<BlkxDescriptor>) {
 
     companion object {
         @JvmStatic
@@ -15,14 +16,26 @@ class Dmg(val descriptors: List<BlkxDescriptor>) {
                 stream.channel.use { channel ->
                     val trailer = tryReadTrailer(channel)
                     val xmlData = trailer?.let { readXmlData(channel, it) } ?: error("Read error")
-                    return Dmg(xmlData)
+                    return Dmg(path, trailer, xmlData)
                 }
+            }
+        }
+    }
+
+    fun getChunk(chunk: BlkxChunkEntry): ByteArray {
+        FileInputStream(path.toFile()).use { stream ->
+            stream.channel.use { channel ->
+                val dataFork = channel.map(FileChannel.MapMode.READ_ONLY, header.dataForkOffset.toLong(), header.dataForkLength.toLong()) // TODO: Checked cast
+
+                val buffer = ByteArray(chunk.compressedLength.toInt())
+                dataFork.get(chunk.compressedOffset.toInt(), buffer)
+                return buffer
             }
         }
     }
 }
 
-private data class XmlDataDescriptor(val offset: ULong, val length: ULong)
+data class XmlDataDescriptor(val offset: ULong, val length: ULong, val dataForkOffset: ULong, val dataForkLength: ULong)
 
 /**
  * https://newosxbook.com/DMG.html
@@ -88,7 +101,7 @@ private fun tryReadTrailer(channel: FileChannel): XmlDataDescriptor? {
     println("Sector count: $sectorCount")
 
     // Also, 3 reserved UInt32 items here.
-    return XmlDataDescriptor(xmlOffset, xmlLength)
+    return XmlDataDescriptor(xmlOffset, xmlLength, dataForkOffset, dataForkLength)
 }
 
 /*
