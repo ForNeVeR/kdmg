@@ -8,5 +8,6 @@ plugins {
 
 dependencies {
     implementation(libs.dd.plist)
+    implementation(libs.lzfse.decode)
     testImplementation(kotlin("test"))
 }

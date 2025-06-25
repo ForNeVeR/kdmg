@@ -5,8 +5,8 @@
 package me.fornever.kdmg.app
 
 import me.fornever.kdmg.util.Dmg
-import org.radarbase.io.lzfse.LZFSEInputStream
 import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
 
 fun main(args: Array<String>) {
     when (args.getOrNull(0)) {
@@ -18,13 +18,11 @@ fun main(args: Array<String>) {
             }
 
             val hfsDescriptor = dmg.descriptors.single { it.name.contains("HFS") }
-            val chunk = hfsDescriptor.table.chunks.first()
-            val datum = dmg.getChunk(chunk)
-            println("chunk data: ${datum.size} bytes")
-
-            val stream = LZFSEInputStream(datum.inputStream())
-            val newDatum = stream.readAllBytes()
-            println("chunk data: ${newDatum.size} bytes")
+            val hfsPath = Path("build/image.hfs").also {
+                println("Saving file as \"${it.absolutePathString()}\".")
+            }
+            dmg.unpackBlkx(hfsDescriptor.table, hfsPath)
+            println("File \"$hfsPath\" written.")
         }
         else -> println("Usage:\n- dmg <path to dmg file> - print the DMG file diagnostics")
     }

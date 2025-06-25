@@ -1,11 +1,14 @@
 package me.fornever.kdmg.util
 
 import com.dd.plist.*
+import org.radarbase.io.lzfse.LZFSEInputStream
 import java.io.FileInputStream
-import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
+import kotlin.io.path.appendBytes
+import kotlin.io.path.createFile
+import kotlin.io.path.deleteIfExists
 
 class Dmg(val path: Path, val header: XmlDataDescriptor, val descriptors: List<BlkxDescriptor>) {
 
@@ -33,7 +36,53 @@ class Dmg(val path: Path, val header: XmlDataDescriptor, val descriptors: List<B
             }
         }
     }
+
+    private fun uncompressChunk(chunk: BlkxChunkEntry, data: ByteArray): ByteArray {
+        when (chunk.entryType) {
+            2U -> if (data.isEmpty()) return ByteArray((chunk.sectorCount * SECTOR_SIZE_BYTES).toInt())
+            0x80000007U -> {
+                val stream = LZFSEInputStream(data.inputStream())
+                val newDatum = stream.readAllBytes()
+                println("chunk data: ${newDatum.size} bytes")
+                return newDatum
+            }
+            else -> {}
+        }
+
+        error("Unsupported DMG chunk entry type: ${chunk.entryType} (size: ${data.size}).")
+    }
+
+    fun unpackBlkx(table: BlkxTable, destination: Path) {
+        var pos = 0UL
+        destination.deleteIfExists()
+        destination.createFile()
+
+        for (chunk in table.chunks) {
+            if (chunk.entryType == 0xFFFFFFFFU) break // last entry // TODO: Check that it is indeed last
+
+            val newPos = chunk.sectorNumber * SECTOR_SIZE_BYTES
+            if (newPos != pos) error("newPos = $newPos, pos = $pos, expected equal numbers")
+
+            pos = newPos
+            val compressedData = getChunk(chunk)
+            val dataToWrite = uncompressChunk(chunk, compressedData)
+
+            val expectedBytes = chunk.sectorCount * SECTOR_SIZE_BYTES
+            if (expectedBytes != dataToWrite.size.toULong()) {
+                error("expectedBytes = $expectedBytes, actual = ${dataToWrite.size}.")
+            }
+            destination.appendBytes(dataToWrite)
+
+            println("$destination: ${dataToWrite.size} bytes written.")
+            pos += dataToWrite.size.toUInt()
+        }
+
+        val expectedSize = table.sectorCount * SECTOR_SIZE_BYTES
+        if (expectedSize != pos) error("File \"$destination\" cannot be unpacked: expected size ${expectedSize}, actual $pos.")
+    }
 }
+
+private const val SECTOR_SIZE_BYTES = 512U
 
 data class XmlDataDescriptor(val offset: ULong, val length: ULong, val dataForkOffset: ULong, val dataForkLength: ULong)
 
