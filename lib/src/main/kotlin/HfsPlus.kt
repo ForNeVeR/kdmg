@@ -21,6 +21,17 @@ class HfsPlus(val path: Path) {
             }
         }
     }
+
+    companion object {
+        @JvmStatic
+        fun parseCatalogFile(catalog: Path): BTreeHeader {
+            return catalog.toFile().inputStream().use { stream ->
+                stream.channel.use { channel ->
+                    channel.readBTreeHeader()
+                }
+            }
+        }
+    }
 }
 
 private val kHFSPlusSigWord = 0x482bu.toUShort() // 'H+'
@@ -258,4 +269,25 @@ data class HfsPlusForkData(
 data class HfsPlusExtentDescriptor(
     val startBlock: UInt,
     val blockCount: UInt
+)
+
+fun FileChannel.readBTreeHeader(): BTreeHeader {
+    val buffer = map(FileChannel.MapMode.READ_ONLY, 0, 14)
+    return BTreeHeader(
+        fLink = buffer.getInt().toUInt(),
+        bLink = buffer.getInt().toUInt(),
+        kind = buffer.get(),
+        height = buffer.get().toUByte(),
+        numRecords = buffer.getShort().toUShort(),
+        reserved = buffer.getShort().toUShort()
+    )
+}
+
+data class BTreeHeader(
+    val fLink: UInt,
+    val bLink: UInt,
+    val kind: Byte,
+    val height: UByte,
+    val numRecords: UShort,
+    val reserved: UShort
 )

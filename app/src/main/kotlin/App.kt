@@ -36,6 +36,11 @@ fun main(args: Array<String>) {
             hfsPlus.extractCatalogFile(header, catalogPath)
             println("File \"$catalogPath\" written successfully.")
         }
+        "catalog" -> {
+            val path = Path(args[1])
+            val result = HfsPlus.parseCatalogFile(path)
+            println("Catalog parse results: $result")
+        }
         else -> println("Usage:\n- dmg <path to dmg file> - print the DMG file diagnostics and unpack it\n- hfs+ <path to hfs+ file> - unpack a HFS+ file")
     }
 }
