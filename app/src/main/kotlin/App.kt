@@ -5,6 +5,7 @@
 package me.fornever.kdmg.app
 
 import me.fornever.kdmg.Dmg
+import me.fornever.kdmg.util.HfsPlus
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 
@@ -24,6 +25,17 @@ fun main(args: Array<String>) {
             dmg.unpackBlkx(hfsDescriptor.table, hfsPath)
             println("File \"$hfsPath\" written.")
         }
-        else -> println("Usage:\n- dmg <path to dmg file> - print the DMG file diagnostics")
+        "hfs+" -> {
+            val path = Path(args[1])
+            val hfsPlus = HfsPlus(path)
+            val header = hfsPlus.readHeader()
+            println(header)
+
+            val catalogPath = Path("build/catalog.cat")
+            println("Saving catalog as \"${catalogPath.absolutePathString()}\".")
+            hfsPlus.extractCatalogFile(header, catalogPath)
+            println("File \"$catalogPath\" written successfully.")
+        }
+        else -> println("Usage:\n- dmg <path to dmg file> - print the DMG file diagnostics and unpack it\n- hfs+ <path to hfs+ file> - unpack a HFS+ file")
     }
 }
