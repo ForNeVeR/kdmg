@@ -10,6 +10,7 @@ import kotlin.io.path.appendBytes
 import kotlin.io.path.createFile
 import kotlin.io.path.deleteIfExists
 
+// TODO: Investigate if we read numbers properly, in Big Endian
 class Dmg(val path: Path, val header: XmlDataDescriptor, val descriptors: List<BlkxDescriptor>) {
 
     companion object {
