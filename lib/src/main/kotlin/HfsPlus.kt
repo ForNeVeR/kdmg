@@ -5,6 +5,7 @@ import java.nio.channels.FileChannel
 import java.nio.file.Path
 import kotlin.io.path.writeBytes
 
+// TODO: Check endianness
 class HfsPlus(val path: Path) {
 
     fun readHeader(): VolumeHeader {
@@ -272,22 +273,84 @@ data class HfsPlusExtentDescriptor(
 )
 
 fun FileChannel.readBTreeHeader(): BTreeHeader {
-    val buffer = map(FileChannel.MapMode.READ_ONLY, 0, 14)
+    val buffer = map(FileChannel.MapMode.READ_ONLY, 0, size())
     return BTreeHeader(
-        fLink = buffer.getInt().toUInt(),
-        bLink = buffer.getInt().toUInt(),
-        kind = buffer.get(),
-        height = buffer.get().toUByte(),
-        numRecords = buffer.getShort().toUShort(),
-        reserved = buffer.getShort().toUShort()
+        buffer.readBTreeNodeDescriptor(), // TODO: Check whether it is a leaf or an index node
+        buffer.readBTreeHeaderRecord()
     )
 }
 
-data class BTreeHeader(
+private fun MappedByteBuffer.readBTreeNodeDescriptor(): BTreeNodeDescriptor {
+    val header = BTreeNodeDescriptor(
+        fLink = getInt().toUInt(),
+        bLink = getInt().toUInt(),
+        kind = get(),
+        height = get().toUByte(),
+        numRecords = getShort().toUShort()
+    )
+    getShort() // reserved field
+    return header
+}
+
+data class BTreeNodeDescriptor(
     val fLink: UInt,
     val bLink: UInt,
     val kind: Byte,
     val height: UByte,
-    val numRecords: UShort,
-    val reserved: UShort
+    val numRecords: UShort
 )
+
+data class BTreeHeader(
+    val descriptor: BTreeNodeDescriptor,
+    val headerRecord: BTreeHeaderRecord
+)
+
+data class BTreeHeaderRecord(
+    val treeDepth: UShort,
+    val rootNode: UInt,
+    val leafRecords: UInt,
+    val firstLeafNode: UInt,
+    val lastLeafNode: UInt,
+    val nodeSize: UShort,
+    val maxKeyLength: UShort,
+    val totalNodes: UInt,
+    val freeNodes: UInt,
+    val clumpSize: UInt,
+    val btreeType: UByte,
+    val keyCompareType: UByte,
+    val attributes: UInt
+)
+
+fun MappedByteBuffer.readBTreeHeaderRecord(): BTreeHeaderRecord {
+    val treeDepth = getShort().toUShort()
+    val rootNode = getInt().toUInt()
+    val leafRecords = getInt().toUInt()
+    val firstLeafNode = getInt().toUInt()
+    val lastLeafNode = getInt().toUInt()
+    val nodeSize = getShort().toUShort()
+    val maxKeyLength = getShort().toUShort()
+    val totalNodes = getInt().toUInt()
+    val freeNodes = getInt().toUInt()
+    getShort() // reserved1
+    val clumpSize = getInt().toUInt()
+    val btreeType = get().toUByte()
+    val keyCompareType = get().toUByte()
+    val attributes = getInt().toUInt()
+    Array(16) { getInt().toUInt() } // reserved3
+
+    return BTreeHeaderRecord(
+        treeDepth,
+        rootNode,
+        leafRecords,
+        firstLeafNode,
+        lastLeafNode,
+        nodeSize,
+        maxKeyLength,
+        totalNodes,
+        freeNodes,
+        clumpSize,
+        btreeType,
+        keyCompareType,
+        attributes
+    )
+}
