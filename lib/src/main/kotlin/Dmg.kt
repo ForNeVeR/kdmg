@@ -14,7 +14,7 @@ import kotlin.io.path.appendBytes
 import kotlin.io.path.createFile
 import kotlin.io.path.deleteIfExists
 
-// TODO: Investigate if we read numbers properly, in Big Endian
+// TODO[#16]: Investigate if we read numbers properly, in Big Endian
 class Dmg(val path: Path, val header: XmlDataDescriptor, val descriptors: List<BlkxDescriptor>) {
 
     companion object {
@@ -33,7 +33,7 @@ class Dmg(val path: Path, val header: XmlDataDescriptor, val descriptors: List<B
     fun getChunk(chunk: BlkxChunkEntry): ByteArray {
         FileInputStream(path.toFile()).use { stream ->
             stream.channel.use { channel ->
-                val dataFork = channel.map(FileChannel.MapMode.READ_ONLY, header.dataForkOffset.toLong(), header.dataForkLength.toLong()) // TODO: Checked cast
+                val dataFork = channel.map(FileChannel.MapMode.READ_ONLY, header.dataForkOffset.toLong(), header.dataForkLength.toLong()) // TODO[#17]: Checked cast
 
                 val buffer = ByteArray(chunk.compressedLength.toInt())
                 dataFork.get(chunk.compressedOffset.toInt(), buffer)
@@ -63,7 +63,7 @@ class Dmg(val path: Path, val header: XmlDataDescriptor, val descriptors: List<B
         destination.createFile()
 
         for (chunk in table.chunks) {
-            if (chunk.entryType == 0xFFFFFFFFU) break // last entry // TODO: Check that it is indeed last
+            if (chunk.entryType == 0xFFFFFFFFU) break // last entry // TODO[#18]: Check that it is indeed last
 
             val newPos = chunk.sectorNumber * SECTOR_SIZE_BYTES
             if (newPos != pos) error("newPos = $newPos, pos = $pos, expected equal numbers")
@@ -303,7 +303,7 @@ data class BlkxDescriptor(val name: String, val table: BlkxTable)
 private fun readXmlData(channel: FileChannel, xmlDataDescriptor: XmlDataDescriptor): List<BlkxDescriptor> {
     val data = channel.map(
         FileChannel.MapMode.READ_ONLY,
-        xmlDataDescriptor.offset.toLong(), // TODO: Checked cast?
+        xmlDataDescriptor.offset.toLong(), // TODO[#17]: Checked cast?
         xmlDataDescriptor.length.toLong()
     )
     val bytes = ByteArray(data.capacity()).apply(data::get)
