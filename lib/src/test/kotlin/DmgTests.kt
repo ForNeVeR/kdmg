@@ -4,7 +4,7 @@
 
 package me.fornever.kdmg.test
 
-import me.fornever.kdmg.util.Dmg
+import me.fornever.kdmg.Dmg
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.Path

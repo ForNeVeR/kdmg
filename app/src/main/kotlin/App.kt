@@ -4,7 +4,7 @@
 
 package me.fornever.kdmg.app
 
-import me.fornever.kdmg.util.Dmg
+import me.fornever.kdmg.Dmg
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 

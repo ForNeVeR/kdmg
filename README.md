@@ -21,7 +21,7 @@ The library will be published to Maven Central, the installation documentation w
 Current usage can be illustrated by the following snippet:
 ```kotlin
 import kotlin.io.path.Path
-import me.fornever.kdmg.util.Dmg
+import me.fornever.kdmg.Dmg
 
 val path = Path("myFile.dmg")
 

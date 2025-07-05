@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package me.fornever.kdmg.util
+package me.fornever.kdmg
 
 import com.dd.plist.*
 import org.radarbase.io.lzfse.LZFSEInputStream
@@ -123,7 +123,7 @@ private fun tryReadTrailer(channel: FileChannel): XmlDataDescriptor? {
 
     val xmlOffset = buffer.getLong().toULong()
     val xmlLength = buffer.getLong().toULong()
-    @Suppress("UnusedVariable") val reserved = ByteArray(120).apply(buffer::get)
+    @Suppress("UnusedVariable", "unused") val reserved = ByteArray(120).apply(buffer::get)
 
     val checksumType = buffer.getInt().toUInt()
     val checksumSize = buffer.getInt().toUInt()
@@ -165,7 +165,7 @@ typedef struct {
         uint64_t SectorNumber;       // Starting disk sector in this blkx descriptor
         uint64_t SectorCount;        // Number of disk sectors in this blkx descriptor
 
-        uint64_t DataOffset;     
+        uint64_t DataOffset;
         uint32_t BuffersNeeded;
         uint32_t BlockDescriptors;   // Number of descriptors
 
@@ -178,7 +178,7 @@ typedef struct {
 
         UDIFChecksum checksum;
 
-        uint32_t NumberOfBlockChunks; 
+        uint32_t NumberOfBlockChunks;
         BLKXChunkEntry [0];
 } __attribute__((__packed__)) BLKXTable;
 
