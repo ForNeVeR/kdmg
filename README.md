@@ -20,8 +20,11 @@ The library will be published to Maven Central, the usage documentation will be 
 ### Diagnostic Application
 Use the following shell command to run the application:
 ```console
-$ ./gradlew :app:run
+$ ./gradlew :app:run --args="enter the real args here"
 ```
+
+Where args could be:
+- `dmg <path to a .dmg file>` - will find a HFS+ image in the file, unpack and save it to the path `app/build/image.hfs`.
 
 Documentation
 -------------
