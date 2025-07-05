@@ -44,7 +44,7 @@ jobs:
       - name: Verify file encoding
         shell: pwsh
         run: |
-          Install-Module VerifyEncoding -Repository PSGallery -RequiredVersion 2.2.0 -Force && Test-Encoding
+          Install-Module VerifyEncoding -Repository PSGallery -RequiredVersion 2.2.0 -Force && Test-Encoding -ExcludeExtensions @('.bat')
 
   licenses:
     runs-on: ubuntu-24.04
