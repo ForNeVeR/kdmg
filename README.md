@@ -15,7 +15,29 @@ This repository includes the library code in the `lib` module,
 and a command-line application to perform some basic tasks in the `app` module.
 
 ### Kotlin Library
-The library will be published to Maven Central, the usage documentation will be available later.
+The library will be published to Maven Central, the installation documentation will be available later.
+
+#### DMG File Manipulation
+Current usage can be illustrated by the following snippet:
+```kotlin
+import kotlin.io.path.Path
+import me.fornever.kdmg.util.Dmg
+
+val path = Path("myFile.dmg")
+
+// Read the DMG file table:
+val dmg = Dmg.read(path)
+
+// Enumerate the BLKX table descriptors:
+for (entry in dmg.descriptors) {
+    println("name: ${entry.name}, table: ${entry.table}")
+}
+
+// Find and unpack the Apple_HFS image:
+val hfsDescriptor = dmg.descriptors.single { it.name.contains("Apple_HFS") }
+val hfsPath = Path("image.hfs")
+dmg.unpackBlkx(hfsDescriptor.table, hfsPath)
+```
 
 ### Diagnostic Application
 Use the following shell command to run the application:

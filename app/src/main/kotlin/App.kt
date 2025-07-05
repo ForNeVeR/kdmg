@@ -17,7 +17,7 @@ fun main(args: Array<String>) {
                 println("name: ${entry.name}, table: ${entry.table}")
             }
 
-            val hfsDescriptor = dmg.descriptors.single { it.name.contains("HFS") }
+            val hfsDescriptor = dmg.descriptors.single { it.name.contains("Apple_HFS") }
             val hfsPath = Path("build/image.hfs").also {
                 println("Saving file as \"${it.absolutePathString()}\".")
             }
