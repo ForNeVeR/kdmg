@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 plugins {
+    alias(libs.plugins.kotlin.jvm)
     application
 }
 
@@ -11,5 +12,5 @@ dependencies {
 }
 
 application {
-    mainClass = "me.fornever.kdmg.AppKt"
+    mainClass = "me.fornever.kdmg.app.AppKt"
 }
