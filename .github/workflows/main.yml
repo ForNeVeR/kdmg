@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 kdmg contributors <https://github.com/ForNeVeR/kdmg>
+# SPDX-FileCopyrightText: 2024-2025 kdmg contributors <https://github.com/ForNeVeR/kdmg>
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -15,6 +15,22 @@ on:
     - cron: '0 0 * * 0'
 
 jobs:
+  main:
+    runs-on: ${{ matrix.image }}
+    strategy:
+      matrix:
+        image: [ macos-14, ubuntu-24.04, windows-2022 ]
+      fail-fast: false
+    steps:
+      - name: Check out the sources
+        uses: actions/checkout@v4
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew build
+
   verify-encoding:
     runs-on: ubuntu-24.04
 
