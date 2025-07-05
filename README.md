@@ -4,7 +4,8 @@ SPDX-FileCopyrightText: 2025 kdmg contributors <https://github.com/ForNeVeR/kdmg
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# kdmg
+kdmg [![Status Zero][status-zero]][andivionian-status-classifier]
+====
 
 This project uses [Gradle](https://gradle.org/).
 To build and run the application, use the *Gradle* tool window by clicking the Gradle icon in the right-hand toolbar,
@@ -31,6 +32,7 @@ and both a build cache and a configuration cache (see `gradle.properties`).
 Documentation
 -------------
 - [Contributor Guide][docs.contributing]
+- [Maintainer Guide][docs.maintaining]
 
 License
 -------
@@ -38,6 +40,9 @@ The project is distributed under the terms of [the Apache 2.0 license][docs.lice
 
 The license indication in the project's sources is compliant with the [REUSE specification v3.3][reuse.spec].
 
+[andivionian-status-classifier]: https://andivionian.fornever.me/v1/#status-zero-
 [docs.contributing]: CONTRIBUTING.md
 [docs.license]: LICENSE.txt
+[docs.maintaining]: MAINTAINING.md
 [reuse.spec]: https://reuse.software/spec-3.3/
+[status-zero]: https://img.shields.io/badge/status-zero-lightgrey.svg
