@@ -7,27 +7,21 @@ SPDX-License-Identifier: Apache-2.0
 kdmg [![Status Zero][status-zero]][andivionian-status-classifier]
 ====
 
-This project uses [Gradle](https://gradle.org/).
-To build and run the application, use the *Gradle* tool window by clicking the Gradle icon in the right-hand toolbar,
-or run it directly from the terminal:
+kdmg is a Kotlin library to unpack [DMG files][spec.dmg] (disk images often used for macOS software distribution).
 
-* Run `./gradlew run` to build and run the application.
-* Run `./gradlew build` to only build the application.
-* Run `./gradlew check` to run all checks, including tests.
-* Run `./gradlew clean` to clean all build outputs.
+This Repository
+---------------
+This repository includes the library code in the `lib` module,
+and a command-line application to perform some basic tasks in the `app` module.
 
-Note the usage of the Gradle Wrapper (`./gradlew`).
-This is the suggested way to use Gradle in production projects.
+### Kotlin Library
+The library will be published to Maven Central, the usage documentation will be available later.
 
-[Learn more about the Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html).
-
-[Learn more about Gradle tasks](https://docs.gradle.org/current/userguide/command_line_interface.html#common_tasks).
-
-This project follows the suggested multi-module setup and consists of the `app` and `utils` subprojects.
-The shared build logic was extracted to a convention plugin located in `buildSrc`.
-
-This project uses a version catalog (see `gradle/libs.versions.toml`) to declare and version dependencies
-and both a build cache and a configuration cache (see `gradle.properties`).
+### Diagnostic Application
+Use the following shell command to run the application:
+```console
+$ ./gradlew :app:run
+```
 
 Documentation
 -------------
@@ -45,4 +39,5 @@ The license indication in the project's sources is compliant with the [REUSE spe
 [docs.license]: LICENSE.txt
 [docs.maintaining]: MAINTAINING.md
 [reuse.spec]: https://reuse.software/spec-3.3/
+[spec.dmg]: https://newosxbook.com/DMG.html
 [status-zero]: https://img.shields.io/badge/status-zero-lightgrey.svg

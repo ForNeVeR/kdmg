@@ -7,6 +7,23 @@ SPDX-License-Identifier: Apache-2.0
 Contributor Guide
 =================
 
+Build
+-----
+To assemble the code (only compile, without tests), run the following shell command:
+```console
+$ ./gradlew assemble
+```
+
+To run tests:
+```console
+$ ./gradlew check
+```
+
+To do everything with a single command:
+```console
+$ ./gradlew build
+```
+
 License Automation
 ------------------
 <!-- REUSE-IgnoreStart -->
