@@ -1,0 +1,16 @@
+version = 1
+SPDX-PackageName = "kdmg"
+SPDX-PackageSupplier = "kdmg contributors <https://github.com/ForNeVeR/kdmg>"
+SPDX-PackageDownloadLocation = "https://github.com/ForNeVeR/kdmg"
+
+[[annotations]]
+path = ".idea/**/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025 kdmg contributors <https://github.com/ForNeVeR/kdmg>"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = ["gradle/wrapper/gradle-wrapper.jar", "gradle/wrapper/gradle-wrapper.properties"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Gradle authors <https://gradle.org/>"
+SPDX-License-Identifier = "Apache-2.0"

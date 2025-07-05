@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 kdmg contributors <https://github.com/ForNeVeR/kdmg>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # kdmg
 
 This project uses [Gradle](https://gradle.org/).

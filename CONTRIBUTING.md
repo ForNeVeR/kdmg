@@ -1,7 +1,7 @@
 <!--
 SPDX-FileCopyrightText: 2024-2025 kdmg contributors <https://github.com/ForNeVeR/kdmg>
 
-SPDX-License-Identifier: MIT
+SPDX-License-Identifier: Apache-2.0
 -->
 
 Contributor Guide
