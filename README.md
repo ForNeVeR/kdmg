@@ -21,3 +21,17 @@ The shared build logic was extracted to a convention plugin located in `buildSrc
 
 This project uses a version catalog (see `gradle/libs.versions.toml`) to declare and version dependencies
 and both a build cache and a configuration cache (see `gradle.properties`).
+
+Documentation
+-------------
+- [Contributor Guide][docs.contributing]
+
+License
+-------
+The project is distributed under the terms of [the Apache 2.0 license][docs.license].
+
+The license indication in the project's sources is compliant with the [REUSE specification v3.3][reuse.spec].
+
+[docs.contributing]: CONTRIBUTING.md
+[docs.license]: LICENSE.txt
+[reuse.spec]: https://reuse.software/spec-3.3/
