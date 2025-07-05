@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package org.example.utils
+package me.fornever.kdmg
 
 class Printer(val message: String) {
 }

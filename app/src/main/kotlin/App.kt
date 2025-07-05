@@ -2,9 +2,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package org.example.app
+package me.fornever.kdmg.app
 
-import org.example.utils.Printer
+import me.fornever.kdmg.Printer
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
