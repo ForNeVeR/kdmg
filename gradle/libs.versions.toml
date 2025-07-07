@@ -7,5 +7,5 @@ dd-plist = "com.googlecode.plist:dd-plist:1.28"
 lzfse-decode = "org.radarbase:lzfse-decode:0.1.1"
 
 [plugins]
-gradle-jvm-wrapper = "me.filippov.gradle.jvm.wrapper:0.14.0"
+gradle-jvm-wrapper = "me.filippov.gradle.jvm.wrapper:0.15.0"
 kotlin-jvm = "org.jetbrains.kotlin.jvm:2.2.0"
