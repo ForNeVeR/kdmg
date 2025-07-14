@@ -33,6 +33,9 @@ class HfsPlus(val path: Path) {
             catalog.toFile().inputStream().use { stream ->
                 stream.channel.use { channel ->
                     val headerNode = channel.readHeaderNode()
+                    val headerRecord = headerNode.records[0] as BTreeHeaderRecord
+                    val rootNode = channel.readNode(headerRecord.rootNode)
+
                     return headerNode
                     // TODO: Possible place to read the map nodes
                 }

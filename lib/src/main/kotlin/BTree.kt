@@ -94,6 +94,35 @@ data class BTreeMapRecord(
     }
 }
 
+// TODO: Catalog file data types: key and data record, are kept in BTreePointerRecord and BTreeDataRecord
+data class BTreePointerRecord(
+    val key: ByteArray,
+    val nodeNumber: UInt
+) : BTreeRecord {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as BTreePointerRecord
+
+        if (!key.contentEquals(other.key)) return false
+        if (nodeNumber != other.nodeNumber) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = key.contentHashCode()
+        result = 31 * result + nodeNumber.hashCode()
+        return result
+    }
+}
+
+data class BTreeDataRecord(
+    val key: ByteArray,
+    val data: ByteArray
+) : BTreeRecord
+
 internal fun FileChannel.readHeaderNode(): BTreeNode {
     val buffer = map(FileChannel.MapMode.READ_ONLY, 0, size())
     val descriptor = buffer.readNodeDescriptor()
@@ -129,6 +158,22 @@ internal fun FileChannel.readHeaderNode(): BTreeNode {
     )
 }
 
+private fun FileChannel.readNode(header: BTreeHeaderRecord, number: UInt): BTreeNode {
+    val nodeOffset = header.nodeSize * number
+    val buffer = map(FileChannel.MapMode.READ_ONLY, nodeOffset.toLong(), header.nodeSize.toLong())
+    val descriptor = buffer.readNodeDescriptor()
+    val node = when (descriptor.kind) {
+        BTreeNodeKind.Header -> error("Unexpected node kind: ${descriptor.kind}. Should only be read at number 0, not ${number}.")
+        BTreeNodeKind.Leaf, BTreeNodeKind.Index -> BTreeNode(descriptor, buffer.readKeyedRecords())
+        else -> error("Unexpected node kind: ${descriptor.kind}.")
+    }
+
+    // TODO: Verify the free space offset
+    // TODO: Verify the node offsets
+
+    return node
+}
+
 private fun MappedByteBuffer.readNodeDescriptor(): BTreeNodeDescriptor {
     val header = BTreeNodeDescriptor(
         fLink = getInt().toUInt(),
@@ -140,6 +185,42 @@ private fun MappedByteBuffer.readNodeDescriptor(): BTreeNodeDescriptor {
     getShort() // reserved field
     return header
 }
+
+private val kBTBigKeysMask: UInt = 0x00000002.toUInt()
+private val kBTVariableIndexKeysMask: UInt = 0x00000004.toUInt()
+
+private fun MappedByteBuffer.readKeyedRecords(descriptor: BTreeNodeDescriptor, header: BTreeHeaderRecord, nodeKind: BTreeNodeKind): List<BTreeRecord> {
+    val usesBigKey = header.attributes and kBTBigKeysMask != 0u
+    return buildList<BTreeRecord>(descriptor.numRecords.toInt()) {
+        val statedKeyLength = if (usesBigKey) getShort().toUShort() else get().toUShort()
+        val actualKeyLength = when (nodeKind) {
+            BTreeNodeKind.Leaf -> statedKeyLength
+            BTreeNodeKind.Index -> {
+                val variableIndex = header.attributes and kBTVariableIndexKeysMask != 0u
+                if (variableIndex) statedKeyLength else header.maxKeyLength
+            }
+            else -> error("Unexpected node kind: $nodeKind.")
+        }
+
+        if (position() % 2 != 0) {
+            // read pad byte
+            @Suppress("UnusedVariable", "unused") val padByte: Byte = get()
+        }
+
+        val key = ByteArray(actualKeyLength.toInt()).apply(::get)
+        when (nodeKind) {
+            BTreeNodeKind.Index -> readIndexNodeRecord()
+            BTreeNodeKind.Leaf -> readDataRecord()
+            else -> error("Unexpected node kind: $nodeKind.")
+        }
+    }
+}
+
+private fun MappedByteBuffer.readIndexNodeRecord(): BTreePointerRecord {
+
+}
+
+private fun MappedByteBuffer.readDataRecord(): BTreeDataRecord {}
 
 private fun MappedByteBuffer.readHeaderRecord(): BTreeHeaderRecord {
     val treeDepth = getShort().toUShort()
