@@ -5,7 +5,7 @@
 package me.fornever.kdmg.app
 
 import me.fornever.kdmg.Dmg
-import me.fornever.kdmg.util.HfsPlus
+import me.fornever.kdmg.HfsPlus
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 

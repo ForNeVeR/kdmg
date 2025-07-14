@@ -1,4 +1,4 @@
-package me.fornever.kdmg.util
+package me.fornever.kdmg
 
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
@@ -25,10 +25,12 @@ class HfsPlus(val path: Path) {
 
     companion object {
         @JvmStatic
-        fun parseCatalogFile(catalog: Path): BTreeHeader {
-            return catalog.toFile().inputStream().use { stream ->
+        fun parseCatalogFile(catalog: Path): BTreeNode {
+            catalog.toFile().inputStream().use { stream ->
                 stream.channel.use { channel ->
-                    channel.readBTreeHeader()
+                    val headerNode = channel.readHeaderNode()
+                    return headerNode
+                    // TODO: Possible place to read the map nodes
                 }
             }
         }
@@ -271,86 +273,3 @@ data class HfsPlusExtentDescriptor(
     val startBlock: UInt,
     val blockCount: UInt
 )
-
-fun FileChannel.readBTreeHeader(): BTreeHeader {
-    val buffer = map(FileChannel.MapMode.READ_ONLY, 0, size())
-    return BTreeHeader(
-        buffer.readBTreeNodeDescriptor(), // TODO: Check whether it is a leaf or an index node
-        buffer.readBTreeHeaderRecord()
-    )
-}
-
-private fun MappedByteBuffer.readBTreeNodeDescriptor(): BTreeNodeDescriptor {
-    val header = BTreeNodeDescriptor(
-        fLink = getInt().toUInt(),
-        bLink = getInt().toUInt(),
-        kind = get(),
-        height = get().toUByte(),
-        numRecords = getShort().toUShort()
-    )
-    getShort() // reserved field
-    return header
-}
-
-data class BTreeNodeDescriptor(
-    val fLink: UInt,
-    val bLink: UInt,
-    val kind: Byte,
-    val height: UByte,
-    val numRecords: UShort
-)
-
-data class BTreeHeader(
-    val descriptor: BTreeNodeDescriptor,
-    val headerRecord: BTreeHeaderRecord
-)
-
-data class BTreeHeaderRecord(
-    val treeDepth: UShort,
-    val rootNode: UInt,
-    val leafRecords: UInt,
-    val firstLeafNode: UInt,
-    val lastLeafNode: UInt,
-    val nodeSize: UShort,
-    val maxKeyLength: UShort,
-    val totalNodes: UInt,
-    val freeNodes: UInt,
-    val clumpSize: UInt,
-    val btreeType: UByte,
-    val keyCompareType: UByte,
-    val attributes: UInt
-)
-
-fun MappedByteBuffer.readBTreeHeaderRecord(): BTreeHeaderRecord {
-    val treeDepth = getShort().toUShort()
-    val rootNode = getInt().toUInt()
-    val leafRecords = getInt().toUInt()
-    val firstLeafNode = getInt().toUInt()
-    val lastLeafNode = getInt().toUInt()
-    val nodeSize = getShort().toUShort()
-    val maxKeyLength = getShort().toUShort()
-    val totalNodes = getInt().toUInt()
-    val freeNodes = getInt().toUInt()
-    getShort() // reserved1
-    val clumpSize = getInt().toUInt()
-    val btreeType = get().toUByte()
-    val keyCompareType = get().toUByte()
-    val attributes = getInt().toUInt()
-    Array(16) { getInt().toUInt() } // reserved3
-
-    return BTreeHeaderRecord(
-        treeDepth,
-        rootNode,
-        leafRecords,
-        firstLeafNode,
-        lastLeafNode,
-        nodeSize,
-        maxKeyLength,
-        totalNodes,
-        freeNodes,
-        clumpSize,
-        btreeType,
-        keyCompareType,
-        attributes
-    )
-}
