@@ -98,13 +98,31 @@ internal fun FileChannel.readHeaderNode(): BTreeNode {
     val buffer = map(FileChannel.MapMode.READ_ONLY, 0, size())
     val descriptor = buffer.readNodeDescriptor()
     if (descriptor.kind != BTreeNodeKind.Header) error("Incorrect node kind for the header node: ${descriptor.kind}.")
+    if (descriptor.numRecords != 3.toUShort())
+        error("Incorrect number of records in the header node: ${descriptor.numRecords}.")
 
+    val headerRecordOffset = buffer.position().toUShort()
     val headerRecord = buffer.readHeaderRecord()
+
+    val userDataRecordOffset = buffer.position().toUShort()
     val userDataRecord = buffer.readUserDataRecord()
+
     // TODO: Assert current position = 256 (minus record offsets in the end?)
     val mapSize = (headerRecord.nodeSize - 256.toUShort()).toUShort()
+    val mapRecordOffset = buffer.position().toUShort()
     val mapRecord = buffer.readMapRecord(mapSize)
-    // TODO: Assert offsets at the end of the node — should point to the records.
+
+    val freeSpaceOffset = buffer.position().toUShort()
+
+    fun readAndAssertOffset(offset: UShort, name: String) {
+        val readOffset = buffer.getShort().toUShort()
+        if (readOffset != offset) error("Offset of $name is incorrect: expected $offset, got $readOffset.")
+    }
+    readAndAssertOffset(freeSpaceOffset, "free space")
+    readAndAssertOffset(mapRecordOffset, "map record")
+    readAndAssertOffset(userDataRecordOffset, "user data record")
+    readAndAssertOffset(headerRecordOffset, "header record")
+
     return BTreeNode(
         descriptor,
         listOf(headerRecord, userDataRecord, mapRecord)
