@@ -95,32 +95,14 @@ data class BTreeMapRecord(
 }
 
 // TODO: Catalog file data types: key and data record, are kept in BTreePointerRecord and BTreeDataRecord
-data class BTreePointerRecord(
-    val key: ByteArray,
+data class BTreePointerRecord<TKey>(
+    val key: TKey,
     val nodeNumber: UInt
-) : BTreeRecord {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
+) : BTreeRecord
 
-        other as BTreePointerRecord
-
-        if (!key.contentEquals(other.key)) return false
-        if (nodeNumber != other.nodeNumber) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = key.contentHashCode()
-        result = 31 * result + nodeNumber.hashCode()
-        return result
-    }
-}
-
-data class BTreeDataRecord(
-    val key: ByteArray,
-    val data: ByteArray
+data class BTreeDataRecord<TKey, TData>(
+    val key: TKey,
+    val data: TData
 ) : BTreeRecord
 
 internal fun FileChannel.readHeaderNode(): BTreeNode {
@@ -158,13 +140,21 @@ internal fun FileChannel.readHeaderNode(): BTreeNode {
     )
 }
 
-private fun FileChannel.readNode(header: BTreeHeaderRecord, number: UInt): BTreeNode {
+private fun <TKey, TData> FileChannel.readNode(
+    header: BTreeHeaderRecord,
+    number: UInt,
+    readKey: MappedByteBuffer.() -> TKey,
+    readData: MappedByteBuffer.() -> TData
+): BTreeNode {
     val nodeOffset = header.nodeSize * number
     val buffer = map(FileChannel.MapMode.READ_ONLY, nodeOffset.toLong(), header.nodeSize.toLong())
     val descriptor = buffer.readNodeDescriptor()
     val node = when (descriptor.kind) {
         BTreeNodeKind.Header -> error("Unexpected node kind: ${descriptor.kind}. Should only be read at number 0, not ${number}.")
-        BTreeNodeKind.Leaf, BTreeNodeKind.Index -> BTreeNode(descriptor, buffer.readKeyedRecords())
+        BTreeNodeKind.Leaf, BTreeNodeKind.Index -> BTreeNode(
+            descriptor,
+            buffer.readKeyedRecords(header, descriptor, readKey, readData)
+        )
         else -> error("Unexpected node kind: ${descriptor.kind}.")
     }
 
@@ -189,9 +179,15 @@ private fun MappedByteBuffer.readNodeDescriptor(): BTreeNodeDescriptor {
 private val kBTBigKeysMask: UInt = 0x00000002.toUInt()
 private val kBTVariableIndexKeysMask: UInt = 0x00000004.toUInt()
 
-private fun MappedByteBuffer.readKeyedRecords(descriptor: BTreeNodeDescriptor, header: BTreeHeaderRecord, nodeKind: BTreeNodeKind): List<BTreeRecord> {
+private fun <TKey, TData> MappedByteBuffer.readKeyedRecords(
+    header: BTreeHeaderRecord,
+    descriptor: BTreeNodeDescriptor,
+    readKey: MappedByteBuffer.() -> TKey,
+    readData: MappedByteBuffer.() -> TData
+): List<BTreeRecord> {
     val usesBigKey = header.attributes and kBTBigKeysMask != 0u
-    return buildList<BTreeRecord>(descriptor.numRecords.toInt()) {
+    val nodeKind = descriptor.kind
+    return buildList(descriptor.numRecords.toInt()) {
         val statedKeyLength = if (usesBigKey) getShort().toUShort() else get().toUShort()
         val actualKeyLength = when (nodeKind) {
             BTreeNodeKind.Leaf -> statedKeyLength
@@ -209,18 +205,31 @@ private fun MappedByteBuffer.readKeyedRecords(descriptor: BTreeNodeDescriptor, h
 
         val key = ByteArray(actualKeyLength.toInt()).apply(::get)
         when (nodeKind) {
-            BTreeNodeKind.Index -> readIndexNodeRecord()
-            BTreeNodeKind.Leaf -> readDataRecord()
+            BTreeNodeKind.Index -> readIndexNodeRecord(readKey)
+            BTreeNodeKind.Leaf -> readDataRecord(readKey, readData)
             else -> error("Unexpected node kind: $nodeKind.")
         }
     }
 }
 
-private fun MappedByteBuffer.readIndexNodeRecord(): BTreePointerRecord {
-
+private fun <TKey> MappedByteBuffer.readIndexNodeRecord(
+    readKey: MappedByteBuffer.() -> TKey
+): BTreePointerRecord<TKey> {
+    return BTreePointerRecord(
+        readKey(),
+        getUInt32()
+    )
 }
 
-private fun MappedByteBuffer.readDataRecord(): BTreeDataRecord {}
+private fun <TKey, TData> MappedByteBuffer.readDataRecord(
+    readKey: MappedByteBuffer.() -> TKey,
+    readData: MappedByteBuffer.() -> TData
+): BTreeDataRecord<TKey, TData> {
+    return BTreeDataRecord(
+        readKey(),
+        readData()
+    )
+}
 
 private fun MappedByteBuffer.readHeaderRecord(): BTreeHeaderRecord {
     val treeDepth = getShort().toUShort()
