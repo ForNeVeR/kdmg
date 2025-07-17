@@ -13,9 +13,59 @@ data class CatalogFileKey(
     val nodeName: String
 )
 
-internal fun MappedByteBuffer.readCatalogFileKey(keyLengthInBytes: UShort): CatalogFileKey {
+sealed interface CatalogFileDataRecord
+class CatalogFileFolderRecord(
+    val flags: UShort,
+    val valence: UInt,
+    val folderId: HFSCatalogNodeId,
+    val createDate: UInt,
+    val contentModDate: UInt,
+    val attributeModDate: UInt,
+    val accessDate: UInt,
+    val backupDate: UInt,
+    val permissions: HfsPlusBsdInfo,
+    val userInfo: FolderInfo,
+    val finderInfo: ExtendedFolderInfo,
+    val textEncoding: UInt
+): CatalogFileDataRecord
+
+internal fun MappedByteBuffer.readCatalogFileKey(): CatalogFileKey {
     val parentId = getUInt32()
     val name = getHfsUniStr255()
     return CatalogFileKey(parentId, name)
 }
 
+const val kHFSPlusFolderRecord: Short = 0x0001
+const val kHFSPlusFileRecord: Short = 0x0002
+const val kHFSPlusFolderThreadRecord: Short = 0x0003
+const val kHFSPlusFileThreadRecord: Short = 0x0004
+
+internal fun MappedByteBuffer.readCatalogFileDataRecord(): CatalogFileDataRecord {
+    val catalogFileRecordType = getShort()
+    return when (catalogFileRecordType) {
+        kHFSPlusFolderRecord -> readFolderRecord()
+        kHFSPlusFileRecord -> readFileRecord()
+        kHFSPlusFolderThreadRecord -> readFolderThreadRecord()
+        kHFSPlusFileThreadRecord -> readFileThreadRecord()
+        else -> error("Invalid catalog file record type: ${catalogFileRecordType.toHexString()}.")
+    }
+}
+
+private fun MappedByteBuffer.readFolderRecord(): CatalogFileFolderRecord {
+    return CatalogFileFolderRecord(
+        getUInt16(),
+        getUInt32(),
+        getUInt32(),
+        getUInt32(),
+        getUInt32(),
+        getUInt32(),
+        getUInt32(),
+        getUInt32(),
+        getHfsPlusBsdInfo(),
+        getFolderInfo(),
+        getExtendedFolderInfo(),
+        getUInt32()
+    ).also {
+        getUInt32() // reserved
+    }
+}

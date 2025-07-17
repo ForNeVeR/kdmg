@@ -216,7 +216,7 @@ private fun <TKey> MappedByteBuffer.readIndexNodeRecord(
     readKey: MappedByteBuffer.() -> TKey
 ): BTreePointerRecord<TKey> {
     return BTreePointerRecord(
-        readKey(),
+        readKey(), // TODO: Verify that the key reading function read all the data it was supposed
         getUInt32()
     )
 }
@@ -226,8 +226,8 @@ private fun <TKey, TData> MappedByteBuffer.readDataRecord(
     readData: MappedByteBuffer.() -> TData
 ): BTreeDataRecord<TKey, TData> {
     return BTreeDataRecord(
-        readKey(),
-        readData()
+        readKey(), // TODO: Verify that the key reading function read all the data it was supposed
+        readData() // TODO: Verify that the data reading function read all the data it was supposed
     )
 }
 
