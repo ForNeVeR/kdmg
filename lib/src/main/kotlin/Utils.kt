@@ -6,4 +6,5 @@ package me.fornever.kdmg
 
 import java.nio.MappedByteBuffer
 
-fun MappedByteBuffer.getUInt32() = getInt().toUInt()
+internal fun MappedByteBuffer.getUInt32(): UInt = getInt().toUInt()
+internal fun MappedByteBuffer.getUInt16(): UShort = getShort().toUShort()

@@ -34,7 +34,12 @@ class HfsPlus(val path: Path) {
                 stream.channel.use { channel ->
                     val headerNode = channel.readHeaderNode()
                     val headerRecord = headerNode.records[0] as BTreeHeaderRecord
-                    val rootNode = channel.readNode(headerRecord.rootNode)
+                    val rootNode = channel.readNode(
+                        headerRecord,
+                        headerRecord.rootNode,
+                        ::readCatalogFileKey,
+                        readCatalogFileData
+                    )
 
                     return headerNode
                     // TODO: Possible place to read the map nodes
@@ -280,3 +285,9 @@ data class HfsPlusExtentDescriptor(
     val startBlock: UInt,
     val blockCount: UInt
 )
+
+internal fun MappedByteBuffer.getHfsUniStr255(): String {
+    val length = getUInt16()
+    val data = ByteArray(length.toInt() * 2).apply(::get)
+    return String(data, Charsets.UTF_16LE)
+}
