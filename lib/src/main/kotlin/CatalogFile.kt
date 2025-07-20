@@ -29,6 +29,41 @@ class CatalogFileFolderRecord(
     val textEncoding: UInt
 ): CatalogFileDataRecord
 
+data class HfsPlusBsdInfo(
+    val ownerId: UInt,
+    val groupId: UInt,
+    val adminFlags: UByte,
+    val ownerFlags: UByte,
+    val fileMode: UShort,
+    val special: UInt
+)
+
+data class FolderInfo(
+    val windowBounds: Rect,
+    val finderFlags: UShort,
+    val location: Point,
+    val reservedField: UShort
+)
+
+data class Rect(
+    val top: Short,
+    val left: Short,
+    val bottom: Short,
+    val right: Short
+)
+
+data class Point(
+    val v: Short,
+    val h: Short
+)
+
+data class ExtendedFolderInfo(
+    val reserved1: List<Short>,
+    val extendedFinderFlags: UShort,
+    val reserved2: Short,
+    val putAwayFolderId: Int
+)
+
 internal fun MappedByteBuffer.readCatalogFileKey(): CatalogFileKey {
     val parentId = getUInt32()
     val name = getHfsUniStr255()
@@ -41,8 +76,7 @@ const val kHFSPlusFolderThreadRecord: Short = 0x0003
 const val kHFSPlusFileThreadRecord: Short = 0x0004
 
 internal fun MappedByteBuffer.readCatalogFileDataRecord(): CatalogFileDataRecord {
-    val catalogFileRecordType = getShort()
-    return when (catalogFileRecordType) {
+    return when (val catalogFileRecordType = getShort()) {
         kHFSPlusFolderRecord -> readFolderRecord()
         kHFSPlusFileRecord -> readFileRecord()
         kHFSPlusFolderThreadRecord -> readFolderThreadRecord()
