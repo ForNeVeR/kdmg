@@ -140,7 +140,7 @@ internal fun FileChannel.readHeaderNode(): BTreeNode {
     )
 }
 
-private fun <TKey, TData> FileChannel.readNode(
+internal fun <TKey, TData> FileChannel.readNode(
     header: BTreeHeaderRecord,
     number: UInt,
     readKey: MappedByteBuffer.() -> TKey,

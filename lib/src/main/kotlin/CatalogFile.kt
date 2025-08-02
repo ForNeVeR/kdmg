@@ -13,8 +13,8 @@ data class CatalogFileKey(
     val nodeName: String
 )
 
-sealed interface CatalogFileDataRecord
-class CatalogFileFolderRecord(
+sealed interface CatalogDataRecord
+class CatalogFolderRecord(
     val flags: UShort,
     val valence: UInt,
     val folderId: HFSCatalogNodeId,
@@ -27,22 +27,30 @@ class CatalogFileFolderRecord(
     val userInfo: FolderInfo,
     val finderInfo: ExtendedFolderInfo,
     val textEncoding: UInt
-): CatalogFileDataRecord
+): CatalogDataRecord
+class CatalogFileRecord(
+    val flags: UShort,
+    val fileId: HFSCatalogNodeId,
+    val createDate: UInt,
+    val contentModDate: UInt,
+    val attributeModDate: UInt,
+    val accessDate: UInt,
+    val backupDate: UInt,
+    val permissions: HfsPlusBsdInfo,
+    val userInfo: FileInfo,
+    val finderInfo: ExtendedFileInfo,
+    val textEncoding: UInt,
+    val dataFork: HfsPlusForkData,
+    val resourceFork: HfsPlusForkData
+) : CatalogDataRecord
+class CatalogThreadRecord(
+    parentId: HFSCatalogNodeId,
+    nodeName: String
+) : CatalogDataRecord
 
-data class HfsPlusBsdInfo(
-    val ownerId: UInt,
-    val groupId: UInt,
-    val adminFlags: UByte,
-    val ownerFlags: UByte,
-    val fileMode: UShort,
-    val special: UInt
-)
-
-data class FolderInfo(
-    val windowBounds: Rect,
-    val finderFlags: UShort,
-    val location: Point,
-    val reservedField: UShort
+data class Point(
+    val v: Short,
+    val h: Short
 )
 
 data class Rect(
@@ -52,16 +60,40 @@ data class Rect(
     val right: Short
 )
 
-data class Point(
-    val v: Short,
-    val h: Short
+typealias OSType = UInt
+
+data class FileInfo(
+    val fileType: OSType,
+    val fileCreator: OSType,
+    val finderFlags: UShort,
+    val location: Point
+)
+
+data class ExtendedFileInfo(
+    val extendedFinderFlags: UShort,
+    val putAwayFolderId: Int
+)
+
+data class FolderInfo(
+    val windowBounds: Rect,
+    val finderFlags: UShort,
+    val location: Point,
+    val reservedField: UShort
 )
 
 data class ExtendedFolderInfo(
-    val reserved1: List<Short>,
+    val scrollPosition: Point,
     val extendedFinderFlags: UShort,
-    val reserved2: Short,
     val putAwayFolderId: Int
+)
+
+data class HfsPlusBsdInfo(
+    val ownerId: UInt,
+    val groupId: UInt,
+    val adminFlags: UByte,
+    val ownerFlags: UByte,
+    val fileMode: UShort,
+    val special: UInt
 )
 
 internal fun MappedByteBuffer.readCatalogFileKey(): CatalogFileKey {
@@ -75,18 +107,18 @@ const val kHFSPlusFileRecord: Short = 0x0002
 const val kHFSPlusFolderThreadRecord: Short = 0x0003
 const val kHFSPlusFileThreadRecord: Short = 0x0004
 
-internal fun MappedByteBuffer.readCatalogFileDataRecord(): CatalogFileDataRecord {
+internal fun MappedByteBuffer.readCatalogFileDataRecord(): CatalogDataRecord {
     return when (val catalogFileRecordType = getShort()) {
         kHFSPlusFolderRecord -> readFolderRecord()
         kHFSPlusFileRecord -> readFileRecord()
-        kHFSPlusFolderThreadRecord -> readFolderThreadRecord()
-        kHFSPlusFileThreadRecord -> readFileThreadRecord()
+        kHFSPlusFolderThreadRecord -> readThreadRecord()
+        kHFSPlusFileThreadRecord -> readThreadRecord()
         else -> error("Invalid catalog file record type: ${catalogFileRecordType.toHexString()}.")
     }
 }
 
-private fun MappedByteBuffer.readFolderRecord(): CatalogFileFolderRecord {
-    return CatalogFileFolderRecord(
+private fun MappedByteBuffer.readFolderRecord(): CatalogFolderRecord {
+    return CatalogFolderRecord(
         getUInt16(),
         getUInt32(),
         getUInt32(),
@@ -102,4 +134,105 @@ private fun MappedByteBuffer.readFolderRecord(): CatalogFileFolderRecord {
     ).also {
         getUInt32() // reserved
     }
+}
+
+private fun MappedByteBuffer.readFileRecord(): CatalogFileRecord {
+    return CatalogFileRecord(
+        getUInt16().also {
+            getUInt32() // reserved1
+        },
+        getUInt32(),
+        getUInt32(),
+        getUInt32(),
+        getUInt32(),
+        getUInt32(),
+        getUInt32(),
+        getHfsPlusBsdInfo(),
+        getFileInfo(),
+        getExtendedFileInfo(),
+        getUInt32().also {
+            getUInt32() // reserved2
+        },
+        readForkData(),
+        readForkData()
+    )
+}
+
+private fun MappedByteBuffer.readThreadRecord(): CatalogThreadRecord {
+    getShort() // reserved
+    return CatalogThreadRecord(
+        getUInt32(),
+        getHfsUniStr255()
+    )
+}
+
+private fun MappedByteBuffer.getHfsPlusBsdInfo(): HfsPlusBsdInfo {
+    return HfsPlusBsdInfo(
+        getUInt32(),
+        getUInt32(),
+        getUInt8(),
+        getUInt8(),
+        getUInt16(),
+        getUInt32()
+    )
+}
+
+private fun MappedByteBuffer.getFolderInfo(): FolderInfo {
+    return FolderInfo(
+        getRect(),
+        getUInt16(),
+        getPoint(),
+        getUInt16()
+    )
+}
+
+private fun MappedByteBuffer.getExtendedFolderInfo(): ExtendedFolderInfo {
+    return ExtendedFolderInfo(
+        getPoint().also {
+            getInt() // reserved1
+        },
+        getUInt16().also {
+            getShort() // reserved2
+        },
+        getInt()
+    )
+}
+
+private fun MappedByteBuffer.getFileInfo(): FileInfo {
+    return FileInfo(
+        getUInt32(),
+        getUInt32(),
+        getUInt16(),
+        getPoint()
+    ).also {
+        getUInt16() // reservedField
+    }
+}
+
+private fun MappedByteBuffer.getExtendedFileInfo(): ExtendedFileInfo {
+    repeat(4) {
+        getShort()
+    } // reserved1
+    return ExtendedFileInfo(
+        getUInt16().also {
+            getShort() // reserved2
+        },
+        getInt()
+    )
+}
+
+private fun MappedByteBuffer.getRect(): Rect {
+    return Rect(
+        getShort(),
+        getShort(),
+        getShort(),
+        getShort()
+    )
+}
+
+private fun MappedByteBuffer.getPoint(): Point {
+    return Point(
+        getShort(),
+        getShort()
+    )
 }
