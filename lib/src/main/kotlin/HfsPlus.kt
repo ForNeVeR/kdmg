@@ -288,6 +288,7 @@ data class HfsPlusExtentDescriptor(
 
 internal fun MappedByteBuffer.getHfsUniStr255(): String {
     val length = getUInt16()
+    if (length > 255U) error("Invalid length of a HFSUniStr255: $length.")
     val data = ByteArray(length.toInt() * 2).apply(::get)
-    return String(data, Charsets.UTF_16LE)
+    return String(data, Charsets.UTF_16BE)
 }
