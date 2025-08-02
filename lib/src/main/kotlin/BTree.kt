@@ -158,8 +158,26 @@ internal fun <TKey, TData> FileChannel.readNode(
         else -> error("Unexpected node kind: ${descriptor.kind}.")
     }
 
-    // TODO: Verify the free space offset
-    // TODO: Verify the node offsets
+    // We expect that each record reading function has read its data fully.
+    // So, we are currently at the beginning of the free space block
+    // (or at the free space offset if the free space is absent).
+    val freeSpaceOffset = buffer.position()
+    val expectedFreeSpaceOffset = run {
+        buffer.position(
+            buffer.limit() - 2 // offset to record 0
+            - descriptor.numRecords.toInt() * 2
+        )
+        buffer.getUInt16()
+    }
+
+    if (freeSpaceOffset != expectedFreeSpaceOffset.toInt()) {
+        error(
+            "Free space offset read from the record was $expectedFreeSpaceOffset," +
+            " but the actual offset after reading the last record is $freeSpaceOffset."
+        )
+    }
+
+    buffer.position(buffer.limit()) // Skip the remaining offsets (should be verified by the record reading functions).
 
     return node
 }
@@ -178,6 +196,7 @@ private fun MappedByteBuffer.readNodeDescriptor(): BTreeNodeDescriptor {
 
 private val kBTBigKeysMask: UInt = 0x00000002.toUInt()
 private val kBTVariableIndexKeysMask: UInt = 0x00000004.toUInt()
+private const val expectedFirstNodeOffset = 14
 
 private fun <TKey, TData> MappedByteBuffer.readKeyedRecords(
     header: BTreeHeaderRecord,
@@ -187,46 +206,83 @@ private fun <TKey, TData> MappedByteBuffer.readKeyedRecords(
 ): List<BTreeRecord> {
     val usesBigKey = header.attributes and kBTBigKeysMask != 0u
     val nodeKind = descriptor.kind
-    return buildList(descriptor.numRecords.toInt()) {
-        val statedKeyLength = if (usesBigKey) getShort().toUShort() else get().toUShort()
-        val actualKeyLength = when (nodeKind) {
-            BTreeNodeKind.Leaf -> statedKeyLength
-            BTreeNodeKind.Index -> {
-                val variableIndex = header.attributes and kBTVariableIndexKeysMask != 0u
-                if (variableIndex) statedKeyLength else header.maxKeyLength
+    val recordCount = descriptor.numRecords.toInt()
+    return buildList(recordCount) {
+        repeat(recordCount) { recordIndex ->
+            val recordOffset = position()
+            if (recordIndex == 0 && recordOffset != expectedFirstNodeOffset) {
+                error("Offset of the first node was expected to be $expectedFirstNodeOffset bytes, actual $recordOffset.")
             }
-            else -> error("Unexpected node kind: $nodeKind.")
-        }
 
-        if (position() % 2 != 0) {
-            // read pad byte
-            @Suppress("UnusedVariable", "unused") val padByte: Byte = get()
-        }
+            val expectedNodeOffset = run {
+                position(
+                    limit() - 2 // offset to record 0
+                    - recordIndex * 2
+                )
+                getUInt16().also { // read the offset and restore the pointer back to the beginning of the record
+                    position(recordOffset)
+                }
+            }
 
-        val key = ByteArray(actualKeyLength.toInt()).apply(::get)
-        when (nodeKind) {
-            BTreeNodeKind.Index -> readIndexNodeRecord(readKey)
-            BTreeNodeKind.Leaf -> readDataRecord(readKey, readData)
-            else -> error("Unexpected node kind: $nodeKind.")
+            if (recordOffset != expectedNodeOffset.toInt()) {
+                error("Expected offset for record $recordIndex was $expectedNodeOffset, but actual is $recordOffset.")
+            }
+
+            val statedKeyLength = if (usesBigKey) getShort().toUShort() else get().toUShort()
+            val actualKeyLength = when (nodeKind) {
+                BTreeNodeKind.Leaf -> statedKeyLength
+                BTreeNodeKind.Index -> {
+                    val variableIndex = header.attributes and kBTVariableIndexKeysMask != 0u
+                    if (variableIndex) statedKeyLength else header.maxKeyLength
+                }
+
+                else -> error("Unexpected node kind: $nodeKind.")
+            }
+
+            if (position() % 2 != 0) {
+                // skip the pad byte
+                @Suppress("UnusedVariable", "unused") val padByte: Byte = get()
+            }
+
+            val keyStartPosition = position()
+            val key = readKey()
+            val keyBytesRead = position() - keyStartPosition
+            if (keyBytesRead != actualKeyLength.toInt()) {
+                error("Expected to read $actualKeyLength bytes for key, but read $keyBytesRead bytes.")
+            }
+
+            if (position() % 2 != 0) {
+                // skip another pad byte
+                @Suppress("UnusedVariable", "unused") val padByte: Byte = get()
+            }
+
+            val record = when (nodeKind) {
+                BTreeNodeKind.Index -> readIndexNodeRecord(key)
+                BTreeNodeKind.Leaf -> readDataRecord(key, readData)
+                else -> error("Unexpected node kind: $nodeKind.")
+            }
+            add(record)
+
+
         }
     }
 }
 
 private fun <TKey> MappedByteBuffer.readIndexNodeRecord(
-    readKey: MappedByteBuffer.() -> TKey
+    key: TKey
 ): BTreePointerRecord<TKey> {
     return BTreePointerRecord(
-        readKey(), // TODO: Verify that the key reading function read all the data it was supposed
+        key,
         getUInt32()
     )
 }
 
 private fun <TKey, TData> MappedByteBuffer.readDataRecord(
-    readKey: MappedByteBuffer.() -> TKey,
+    key: TKey,
     readData: MappedByteBuffer.() -> TData
 ): BTreeDataRecord<TKey, TData> {
     return BTreeDataRecord(
-        readKey(), // TODO: Verify that the key reading function read all the data it was supposed
+        key,
         readData() // TODO: Verify that the data reading function read all the data it was supposed
     )
 }

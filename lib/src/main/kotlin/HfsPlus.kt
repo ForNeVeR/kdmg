@@ -41,7 +41,7 @@ class HfsPlus(val path: Path) {
                         { readCatalogFileDataRecord() }
                     )
 
-                    return rootNode
+                    return listOf(rootNode)
                     // TODO: Possible place to read the map nodes
                 }
             }
