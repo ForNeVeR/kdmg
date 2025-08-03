@@ -29,7 +29,7 @@ class HfsPlus(val path: Path) {
 
     companion object {
         @JvmStatic
-        fun parseCatalogFile(catalog: Path): List<BTreeNode> {
+        fun parseCatalogFile(catalog: Path) {
             catalog.toFile().inputStream().use { stream ->
                 stream.channel.use { channel ->
                     val headerNode = channel.readHeaderNode()
@@ -41,8 +41,9 @@ class HfsPlus(val path: Path) {
                         { readCatalogFileDataRecord() }
                     )
 
-                    return listOf(rootNode)
-                    // TODO: Possible place to read the map nodes
+                    println("Root node: $rootNode")
+
+                    channel.forEachFile(headerNode)
                 }
             }
         }

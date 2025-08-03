@@ -5,6 +5,7 @@
 package me.fornever.kdmg
 
 import java.nio.MappedByteBuffer
+import java.nio.channels.FileChannel
 
 typealias HFSCatalogNodeId = UInt
 
@@ -43,9 +44,9 @@ class CatalogFileRecord(
     val dataFork: HfsPlusForkData,
     val resourceFork: HfsPlusForkData
 ) : CatalogDataRecord
-class CatalogThreadRecord(
-    parentId: HFSCatalogNodeId,
-    nodeName: String
+data class CatalogThreadRecord(
+    val parentId: HFSCatalogNodeId,
+    val nodeName: String
 ) : CatalogDataRecord
 
 data class Point(
@@ -235,4 +236,54 @@ private fun MappedByteBuffer.getPoint(): Point {
         getShort(),
         getShort()
     )
+}
+
+private fun FileChannel.readCatalogNode(headerRecord: BTreeHeaderRecord, number: UInt) = readNode(
+    headerRecord,
+    number,
+    { readCatalogFileKey() },
+    { readCatalogFileDataRecord() }
+)
+
+internal fun FileChannel.forEachFile(headerNode: BTreeNode) { // TODO: Pass action
+    val headerRecord = headerNode.records[0] as BTreeHeaderRecord
+    val rootNode = readNode(
+        headerRecord,
+        headerRecord.rootNode,
+        { readCatalogFileKey() },
+        { readCatalogFileDataRecord() }
+    )
+
+    if (rootNode.descriptor.kind == BTreeNodeKind.Index) { // TODO: Investigate whether the root node have to be index.
+
+        // TODO: Find the root node (CNID = 1 or 2?)
+        // TODO: Enumerate level by level according to the algorithm
+
+        for (indexRecord in rootNode.records) {
+            indexRecord as BTreePointerRecord<*>
+            val key = indexRecord.key as CatalogFileKey
+            val name = key.nodeName
+            print("${key.parentId} / $name: ")
+
+            val data = readCatalogNode(headerRecord, indexRecord.nodeNumber)
+            if (data.descriptor.kind != BTreeNodeKind.Leaf) {
+                error("Node ${indexRecord.nodeNumber} is expected to be a leaf, but it's a ${data.descriptor.kind}.")
+            }
+
+            for (record in data.records) {
+                record as BTreeDataRecord<*, *> // TODO: Could be another layer of index?
+                val key = record.key as CatalogFileKey
+                when (val recordData = record.data) {
+                    is CatalogFileRecord -> println("${record.key.nodeName}: ${recordData.dataFork.logicalSize} bytes.")
+                    is CatalogFolderRecord -> println("${record.key.nodeName} (folder).")
+                    is CatalogThreadRecord -> println("${record.key.nodeName}: thread ${recordData.parentId} / ${recordData.nodeName}")
+                    else -> error("Unexpected type ${recordData?.javaClass}.")
+                }
+            }
+        }
+
+        // TODO: Next index node via fLink/bLink
+    }
+
+
 }
