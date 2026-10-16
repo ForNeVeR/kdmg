@@ -21,7 +21,7 @@ jobs:
       matrix:
         image:
           - macos-14
-          - ubuntu-24.04
+          - ubuntu-26.04
           - windows-2025
       fail-fast: false
     steps:
@@ -35,7 +35,7 @@ jobs:
         run: ./gradlew build
 
   verify-encoding:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Check out the sources
@@ -47,7 +47,7 @@ jobs:
           Install-Module VerifyEncoding -Repository PSGallery -RequiredVersion 2.2.0 -Force && Test-Encoding -ExcludeExtensions @('.bat')
 
   licenses:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Check out the sources
         uses: actions/checkout@v4
